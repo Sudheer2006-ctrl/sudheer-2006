@@ -1,3 +1,2 @@
 # bsc ai
-happy
 
