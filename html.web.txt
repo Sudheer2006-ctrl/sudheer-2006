@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Swiggy Clone — Demo</title>
+  <style>
+    :root{
+      --accent:#ff6f3c;
+      --muted:#6b7280;
+      --bg:#f7f7f9;
+      --card:#ffffff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:#111}
+    header{background:linear-gradient(90deg,#fff 0 60%, rgba(255,111,60,0.05));padding:18px 20px;display:flex;align-items:center;gap:18px;border-bottom:1px solid #eee}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+    .logo{width:44px;height:44px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .search{flex:1;display:flex;gap:8px;align-items:center}
+    .search input{flex:1;padding:10px 12px;border-radius:8px;border:1px solid #e6e6e9;background:white}
+    .icons{display:flex;gap:12px;align-items:center}
+    .chip{background:white;padding:8px 10px;border-radius:999px;border:1px solid #eee;font-size:14px}
+
+    main{max-width:1100px;margin:18px auto;padding:0 20px;display:grid;grid-template-columns: 1fr 320px;gap:20px}
+    .left{display:flex;flex-direction:column;gap:18px}
+    .hero{background:linear-gradient(90deg,rgba(255,111,60,0.06),transparent);padding:18px;border-radius:12px;display:flex;align-items:center;justify-content:space-between}
+    .hero h2{margin:0}
+    .categories{display:flex;gap:12px;flex-wrap:wrap}
+    .category{background:var(--card);padding:10px 12px;border-radius:10px;border:1px solid #eee;display:flex;gap:8px;align-items:center;cursor:pointer}
+
+    .restaurants{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    .card{background:var(--card);padding:12px;border-radius:12px;border:1px solid #eee;display:flex;gap:12px;align-items:flex-start}
+    .r-img{width:110px;height:80px;border-radius:10px;background:#ddd;flex-shrink:0;object-fit:cover}
+    .r-content{flex:1}
+    .r-title{display:flex;justify-content:space-between;align-items:center}
+    .r-meta{color:var(--muted);font-size:13px;margin-top:6px}
+    .btn{background:var(--accent);color:#fff;padding:8px 10px;border:none;border-radius:8px;cursor:pointer}
+    .small{font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid #eee;background:white}
+
+    /* Right column (cart / filters) */
+    .right{display:flex;flex-direction:column;gap:12px}
+    .card-panel{background:var(--card);padding:12px;border-radius:12px;border:1px solid #eee}
+    .cart-empty{color:var(--muted);text-align:center;padding:26px}
+    .cart-list{display:flex;flex-direction:column;gap:10px}
+    .cart-item{display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+    /* Modal (menu) */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:flex-end;justify-content:center}
+    .modal.open{display:flex}
+    .menu-sheet{width:100%;max-width:900px;background:white;border-radius:12px 12px 0 0;padding:16px;max-height:80vh;overflow:auto}
+    .menu-header{display:flex;justify-content:space-between;align-items:center}
+    .menu-grid{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:12px}
+    .menu-items{display:flex;flex-direction:column;gap:10px}
+    .menu-item{display:flex;gap:10px;align-items:center;padding:10px;border-radius:8px;border:1px solid #f0f0f0}
+
+    footer{max-width:1100px;margin:18px auto;padding:0 20px;color:var(--muted);font-size:13px}
+
+    /* Responsive */
+    @media (max-width:900px){main{grid-template-columns:1fr} .restaurants{grid-template-columns:1fr} .menu-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">S</div>
+      <div>
+        <div style="font-size:15px">Swiggy — Clone</div>
+        <div style="font-size:12px;color:var(--muted)">Food delivery demo</div>
+      </div>
+    </div>
+
+    <div class="search">
+      <input id="search" placeholder="Search for restaurants or dishes (e.g., biryani)" />
+      <div class="icons">
+        <div class="chip">Location: Bengaluru</div>
+      </div>
+    </div>
+
+    <div class="icons">
+      <div class="small">Login</div>
+      <button class="chip" id="cart-btn">Cart (<span id="cart-count">0</span>)</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="left">
+      <div class="hero card-panel">
+        <div>
+          <h2>Hungry? Order from nearby restaurants</h2>
+          <div style="color:var(--muted);margin-top:6px">Fast delivery • Exclusive offers</div>
+        </div>
+        <div>
+          <button class="btn" onclick="alert('This is a static demo — integrate with backend to place orders')">Start Order</button>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div style="font-weight:600;margin-bottom:8px">Categories</div>
+        <div class="categories" id="categories">
+          <div class="category" data-cat="All">All</div>
+          <div class="category" data-cat="Biryani">Biryani</div>
+          <div class="category" data-cat="Pizza">Pizza</div>
+          <div class="category" data-cat="Chinese">Chinese</div>
+          <div class="category" data-cat="Desserts">Desserts</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:600">Restaurants</div>
+          <div style="color:var(--muted);font-size:13px">Showing <span id="rest-count">0</span></div>
+        </div>
+        <div class="restaurants" id="restaurants"></div>
+      </div>
+    </div>
+
+    <aside class="right">
+      <div class="card-panel">
+        <div style="font-weight:600;margin-bottom:8px">Cart</div>
+        <div id="cart" class="cart-empty">Your cart is empty.</div>
+      </div>
+
+      <div class="card-panel">
+        <div style="font-weight:600;margin-bottom:8px">Offers</div>
+        <div style="color:var(--muted);font-size:14px">No active offers in this demo.</div>
+      </div>
+    </aside>
+  </main>
+
+  <div class="modal" id="menu-modal" aria-hidden="true">
+    <div class="menu-sheet" role="dialog" aria-modal="true">
+      <div class="menu-header">
+        <div>
+          <div id="menu-restaurant" style="font-weight:700">Restaurant</div>
+          <div id="menu-restaurant-sub" style="color:var(--muted);font-size:13px">Location • 30 mins</div>
+        </div>
+        <div>
+          <button class="small" onclick="closeMenu()">Close</button>
+        </div>
+      </div>
+
+      <div class="menu-grid">
+        <div>
+          <div style="font-weight:600;margin-top:12px;margin-bottom:8px">Menu</div>
+          <div class="menu-items" id="menu-items"></div>
+        </div>
+        <div>
+          <div style="font-weight:600;margin-bottom:8px">Your Order</div>
+          <div id="menu-cart" class="cart-empty">No items added.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    This is a static front-end demo of a food delivery UI. Use it to prototype layout and interactions.
+  </footer>
+
+  <script>
+    // Sample data (would normally come from an API)
+    const RESTAURANTS = [
+      {id:1,name:'Spicy Biryani House',cuisine:'Biryani',rating:4.5,eta:'25-35 mins',img:'https://images.unsplash.com/photo-1604908177522-0a8fb6d0d4ea?auto=format&fit=crop&w=800&q=60',menu:[{id:101,name:'Hyderabadi Biryani',price:220},{id:102,name:'Chicken 65 Biryani',price:240}]},
+      {id:2,name:'Pizza Planet',cuisine:'Pizza',rating:4.3,eta:'20-30 mins',img:'https://images.unsplash.com/photo-1548365328-5e3d144a9f1a?auto=format&fit=crop&w=800&q=60',menu:[{id:201,name:'Margherita',price:199},{id:202,name:'Peppy Paneer',price:249}]},
+      {id:3,name:'Noodle Republic',cuisine:'Chinese',rating:4.1,eta:'30-40 mins',img:'https://images.unsplash.com/photo-1604908177523-09d375c6f12a?auto=format&fit=crop&w=800&q=60',menu:[{id:301,name:'Veg Hakka Noodles',price:149},{id:302,name:'Chilli Chicken',price:259}]},
+      {id:4,name:'Sweet Tooth',cuisine:'Desserts',rating:4.7,eta:'15-25 mins',img:'https://images.unsplash.com/photo-1512058564366-c9e3fa6a0d5a?auto=format&fit=crop&w=800&q=60',menu:[{id:401,name:'Chocolate Brownie',price:99},{id:402,name:'Gulab Jamun',price:69}]},
+    ];
+
+    let CART = {};
+
+    const restaurantsEl = document.getElementById('restaurants');
+    const restCountEl = document.getElementById('rest-count');
+    const cartEl = document.getElementById('cart');
+    const cartCountEl = document.getElementById('cart-count');
+
+    function renderRestaurants(list){
+      restaurantsEl.innerHTML = '';
+      list.forEach(r=>{
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <img class="r-img" src="${r.img}" alt="${r.name}" />
+          <div class="r-content">
+            <div class="r-title">
+              <div>
+                <div style="font-weight:700">${r.name}</div>
+                <div style="color:var(--muted);font-size:13px">${r.cuisine} • ${r.eta}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:14px">⭐ ${r.rating}</div>
+                <div style="margin-top:8px"><button class="small" onclick="openMenu(${r.id})">View Menu</button></div>
+              </div>
+            </div>
+          </div>
+        `;
+        restaurantsEl.appendChild(div);
+      });
+      restCountEl.textContent = list.length;
+    }
+
+    function openMenu(id){
+      const r = RESTAURANTS.find(x=>x.id===id);
+      if(!r) return;
+      document.getElementById('menu-restaurant').textContent = r.name;
+      document.getElementById('menu-restaurant-sub').textContent = `${r.cuisine} • ${r.eta}`;
+      const menuItems = document.getElementById('menu-items');
+      menuItems.innerHTML = '';
+      r.menu.forEach(item=>{
+        const it = document.createElement('div');
+        it.className = 'menu-item';
+        it.innerHTML = `
+          <div style="flex:1">
+            <div style="font-weight:600">${item.name}</div>
+            <div style="color:var(--muted);font-size:13px">₹ ${item.price}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+            <button class="small" onclick="addToCart(${id},${item.id})">Add</button>
+          </div>
+        `;
+        menuItems.appendChild(it);
+      });
+      document.getElementById('menu-modal').classList.add('open');
+      refreshMenuCart();
+    }
+
+    function closeMenu(){
+      document.getElementById('menu-modal').classList.remove('open');
+    }
+
+    function addToCart(restaurantId, itemId){
+      const r = RESTAURANTS.find(x=>x.id===restaurantId);
+      const item = r.menu.find(m=>m.id===itemId);
+      const key = `${restaurantId}_${itemId}`;
+      if(!CART[key]){
+        CART[key] = {restaurantId, itemId, name:item.name, price:item.price, qty:1};
+      } else CART[key].qty++;
+      updateCartUI();
+      refreshMenuCart();
+    }
+
+    function removeFromCart(key){
+      if(CART[key]){
+        CART[key].qty--;
+        if(CART[key].qty<=0) delete CART[key];
+        updateCartUI();
+        refreshMenuCart();
+      }
+    }
+
+    function updateCartUI(){
+      const keys = Object.keys(CART);
+      if(keys.length===0){
+        cartEl.className = 'cart-empty';
+        cartEl.textContent = 'Your cart is empty.';
+      } else {
+        cartEl.className = 'cart-list';
+        cartEl.innerHTML = '';
+        let total = 0;
+        keys.forEach(k=>{
+          const it = CART[k];
+          total += it.price * it.qty;
+          const node = document.createElement('div');
+          node.className = 'cart-item';
+          node.innerHTML = `
+            <div style="flex:1">${it.name} <div style="color:var(--muted);font-size:13px">₹ ${it.price} × ${it.qty}</div></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="small" onclick="removeFromCart('${k}')">-</button>
+            </div>
+          `;
+          cartEl.appendChild(node);
+        });
+        const totalNode = document.createElement('div');
+        totalNode.style.marginTop = '8px';
+        totalNode.style.fontWeight = '700';
+        totalNode.textContent = `Total: ₹ ${total}`;
+        cartEl.appendChild(totalNode);
+      }
+      const count = Object.values(CART).reduce((s,i)=>s+i.qty,0);
+      cartCountEl.textContent = count;
+    }
+
+    function refreshMenuCart(){
+      const menuCartEl = document.getElementById('menu-cart');
+      const keys = Object.keys(CART);
+      if(keys.length===0){
+        menuCartEl.className = 'cart-empty';
+        menuCartEl.textContent = 'No items added.';
+      } else {
+        menuCartEl.className = '';
+        menuCartEl.innerHTML = '';
+        keys.forEach(k=>{
+          const it = CART[k];
+          const div = document.createElement('div');
+          div.className = 'cart-item';
+          div.innerHTML = `
+            <div style="flex:1">${it.name} <div style="color:var(--muted);font-size:13px">₹ ${it.price} × ${it.qty}</div></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="small" onclick="removeFromCart('${k}')">-</button>
+            </div>
+          `;
+          menuCartEl.appendChild(div);
+        });
+        const subtotal = Object.values(CART).reduce((s,i)=>s + i.price*i.qty,0);
+        const subDiv = document.createElement('div');
+        subDiv.style.marginTop='8px';
+        subDiv.style.fontWeight='700';
+        subDiv.textContent = `Subtotal: ₹ ${subtotal}`;
+        menuCartEl.appendChild(subDiv);
+      }
+    }
+
+    // Search & filter
+    document.getElementById('search').addEventListener('input', e=>{
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = RESTAURANTS.filter(r=> r.name.toLowerCase().includes(q) || r.cuisine.toLowerCase().includes(q) || r.menu.some(m=>m.name.toLowerCase().includes(q)));
+      renderRestaurants(filtered);
+    });
+
+    document.getElementById('categories').addEventListener('click', e=>{
+      const chip = e.target.closest('.category');
+      if(!chip) return;
+      const cat = chip.dataset.cat;
+      if(cat==='All') renderRestaurants(RESTAURANTS);
+      else renderRestaurants(RESTAURANTS.filter(r=>r.cuisine.toLowerCase()===cat.toLowerCase()));
+    });
+
+    // Cart modal open
+    document.getElementById('cart-btn').addEventListener('click', ()=>{
+      const count = Object.values(CART).reduce((s,i)=>s+i.qty,0);
+      if(count===0) alert('Cart is empty. Add items from a restaurant menu.');
+      else alert('This demo does not process payments. Implement backend to checkout.');
+    });
+
+    // init
+    renderRestaurants(RESTAURANTS);
+    updateCartUI();
+
+    // close modal when backdrop clicked
+    document.getElementById('menu-modal').addEventListener('click', (e)=>{
+      if(e.target.id==='menu-modal') closeMenu();
+    });
+  </script>
+</body>
+</html>
