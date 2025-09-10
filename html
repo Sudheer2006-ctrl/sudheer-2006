@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Todo — Single-file Web App</title>
+  <meta name="description" content="A single-file HTML/CSS/JS todo web app with localStorage, filters, edit, export/import." />
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1220; --accent:#7c3aed; --muted:#94a3b8; --glass: rgba(255,255,255,0.04);
+      --radius:12px; --maxw:900px;
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071024 0%,#071022 60%);color:#e6eef8}
+    .wrap{max-width:var(--maxw);margin:40px auto;padding:24px;border-radius:16px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    header h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .input{flex:1;display:flex;gap:8px}
+    input[type=text]{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit;outline:none}
+    button{background:var(--accent);border:none;padding:10px 12px;border-radius:10px;color:white;cursor:pointer}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .chip{background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.02);cursor:pointer}
+    .chip[aria-pressed="true"]{background:linear-gradient(90deg,var(--accent),#4c1d95);box-shadow:0 6px 18px rgba(124,58,237,0.18)}
+    .list{margin-top:16px}
+    .task{display:flex;gap:12px;align-items:center;padding:10px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);margin-bottom:10px}
+    .task .title{flex:1}
+    .task.completed .title{opacity:0.6;text-decoration:line-through}
+    .small{font-size:13px;color:var(--muted)}
+    .actions{display:flex;gap:8px}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:8px;cursor:pointer}
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;color:var(--muted)}
+    .search{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+    @media (max-width:640px){.wrap{margin:18px;padding:16px}}
+  </style>
+</head>
+<body>
+  <main class="wrap" role="main">
+    <header>
+      <div style="display:flex;flex-direction:column">
+        <h1>Simple Todo</h1>
+        <div class="small">Single-file HTML web app — works offline, stores in localStorage</div>
+      </div>
+      <div style="margin-left:auto" class="controls" role="toolbar" aria-label="App controls">
+        <div class="input">
+          <input id="taskInput" type="text" placeholder="Add a task and press Enter or click Add" aria-label="New task" />
+          <button id="addBtn" title="Add task">Add</button>
+        </div>
+        <div class="toolbar" aria-hidden>
+          <button id="exportBtn" class="btn-ghost" title="Export tasks">Export</button>
+          <button id="importBtn" class="btn-ghost" title="Import tasks (JSON)">Import</button>
+        </div>
+      </div>
+    </header>
+
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div role="tablist" aria-label="Filters">
+        <button class="chip" data-filter="all" aria-pressed="true">All</button>
+        <button class="chip" data-filter="active">Active</button>
+        <button class="chip" data-filter="completed">Completed</button>
+      </div>
+
+      <input id="search" class="search" placeholder="Search tasks..." aria-label="Search tasks" />
+    </div>
+
+    <section class="list" id="list" aria-live="polite"></section>
+
+    <div class="footer">
+      <div id="counts" class="small">0 tasks</div>
+      <div>
+        <button id="clearCompleted" class="btn-ghost">Clear completed</button>
+      </div>
+    </div>
+  </main>
+
+  <template id="taskTpl">
+    <div class="task" draggable="false">
+      <input type="checkbox" class="toggle" aria-label="Mark complete" />
+      <div class="title" contenteditable="false" role="textbox" aria-label="Task title"></div>
+      <div class="actions">
+        <button class="btn-ghost edit">Edit</button>
+        <button class="btn-ghost delete">Delete</button>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // Simple Todo app (single-file)
+    (()=>{
+      const STORAGE_KEY = 'simple_todo_v1';
+      let tasks = []; // {id, text, done, created}
+      let filter = 'all';
+      const listEl = document.getElementById('list');
+      const countsEl = document.getElementById('counts');
+      const taskInput = document.getElementById('taskInput');
+      const addBtn = document.getElementById('addBtn');
+      const searchEl = document.getElementById('search');
+
+      // load
+      function load(){
+        try{ const raw = localStorage.getItem(STORAGE_KEY); tasks = raw ? JSON.parse(raw) : []; }
+        catch(e){ tasks = []; }
+      }
+      function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+
+      // render
+      function render(){
+        listEl.innerHTML = '';
+        const q = (searchEl.value || '').toLowerCase().trim();
+        const filtered = tasks.filter(t=>{
+          if(filter==='active') return !t.done;
+          if(filter==='completed') return t.done;
+          return true;
+        }).filter(t=> t.text.toLowerCase().includes(q));
+
+        if(filtered.length===0){
+          listEl.innerHTML = '<div class="small" style="padding:14px">No tasks — add one above.</div>';
+        } else {
+          const tpl = document.getElementById('taskTpl');
+          filtered.forEach(t=>{
+            const node = tpl.content.firstElementChild.cloneNode(true);
+            node.dataset.id = t.id;
+            const cb = node.querySelector('.toggle');
+            const title = node.querySelector('.title');
+            const editBtn = node.querySelector('.edit');
+            const delBtn = node.querySelector('.delete');
+            cb.checked = !!t.done;
+            title.textContent = t.text;
+            if(t.done) node.classList.add('completed');
+
+            cb.addEventListener('change', ()=>{ t.done = cb.checked; save(); render(); });
+            delBtn.addEventListener('click', ()=>{ tasks = tasks.filter(x=>x.id!==t.id); save(); render(); });
+
+            editBtn.addEventListener('click', ()=>{
+              if(title.isContentEditable){
+                // save
+                title.contentEditable = 'false';
+                title.blur();
+                t.text = title.textContent.trim();
+                save();
+                editBtn.textContent = 'Edit';
+              } else {
+                title.contentEditable = 'true';
+                title.focus();
+                // move caret to end
+                const range = document.createRange(); range.selectNodeContents(title); range.collapse(false);
+                const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+                editBtn.textContent = 'Save';
+              }
+            });
+
+            title.addEventListener('keydown', (e)=>{
+              if(e.key==='Enter'){ e.preventDefault(); editBtn.click(); }
+            });
+
+            listEl.appendChild(node);
+          });
+        }
+
+        const total = tasks.length; const done = tasks.filter(t=>t.done).length;
+        countsEl.textContent = `${total} task${total!==1?'s':''} — ${done} completed`;
+      }
+
+      // actions
+      function addTask(text){
+        const trimmed = (text||'').trim(); if(!trimmed) return;
+        tasks.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), text:trimmed, done:false, created:Date.now()});
+        save(); render();
+      }
+
+      addBtn.addEventListener('click', ()=>{ addTask(taskInput.value); taskInput.value=''; taskInput.focus(); });
+      taskInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ addBtn.click(); } });
+
+      // filter chips
+      document.querySelectorAll('.chip').forEach(chip=>{
+        chip.addEventListener('click', ()=>{
+          document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+          chip.setAttribute('aria-pressed','true');
+          filter = chip.dataset.filter; render();
+        });
+      });
+
+      searchEl.addEventListener('input', ()=>render());
+
+      document.getElementById('clearCompleted').addEventListener('click', ()=>{
+        tasks = tasks.filter(t=>!t.done); save(); render();
+      });
+
+      // export/import
+      document.getElementById('exportBtn').addEventListener('click', ()=>{
+        const data = JSON.stringify(tasks, null, 2);
+        const blob = new Blob([data], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'tasks.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      });
+
+      document.getElementById('importBtn').addEventListener('click', ()=>{
+        const inp = document.createElement('input'); inp.type='file'; inp.accept='application/json';
+        inp.addEventListener('change', ()=>{
+          const f = inp.files[0]; if(!f) return;
+          const r = new FileReader();
+          r.onload = ()=>{
+            try{
+              const arr = JSON.parse(r.result);
+              if(Array.isArray(arr)){
+                // merge but keep ids stable
+                arr.forEach(item=>{
+                  if(item && typeof item.text==='string'){
+                    tasks.push({id:item.id||(Date.now().toString(36)+Math.random().toString(36).slice(2,6)), text:item.text, done:!!item.done, created:item.created||Date.now()});
+                  }
+                });
+                save(); render();
+              } else alert('Invalid file: expected an array of tasks');
+            } catch(e){ alert('Failed to parse JSON'); }
+          };
+          r.readAsText(f);
+        });
+        inp.click();
+      });
+
+      // keyboard accessibility: focus first input with '/'
+      window.addEventListener('keydown', (e)=>{ if(e.key==='/' && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){ e.preventDefault(); taskInput.focus(); } });
+
+      // initialize
+      load(); render();
+
+      // expose for debugging in console (optional)
+      window.__todo = {get:()=>tasks, save, render, addTask};
+    })();
+  </script>
+</body>
+</html>
